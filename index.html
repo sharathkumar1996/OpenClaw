@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EA MCQ Agent Review System</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+
+:root {
+  --bg:#0c0b09;--s1:#161513;--s2:#1f1e1b;--s3:#282724;
+  --b1:#2a2926;--b2:#383633;
+  --accent:#e8c547;--teal:#4ecdc4;--red:#ff6b6b;--orange:#ffa94d;--green:#69db7c;
+  --t1:#f0ede8;--t2:#a09d97;--t3:#6b6865;--t4:#3d3c3a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--t1);font-family:'DM Sans',sans-serif;font-size:14px;min-height:100vh}
+
+/* LAYOUT */
+.app{display:grid;grid-template-rows:56px 1fr;height:100vh}
+header{background:var(--s1);border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;padding:0 28px;z-index:100}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:var(--accent);letter-spacing:-0.3px}
+.logo em{color:var(--t3);font-style:normal;font-weight:400}
+.status-pills{display:flex;gap:8px}
+.pill{font-family:'DM Mono',monospace;font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid var(--b1);color:var(--t3);text-transform:uppercase;letter-spacing:0.5px}
+.pill.ok{border-color:rgba(105,219,124,.3);color:var(--green);background:rgba(105,219,124,.06)}
+.pill.err{border-color:rgba(255,107,107,.3);color:var(--red);background:rgba(255,107,107,.06)}
+
+.body{display:grid;grid-template-columns:380px 1fr;overflow:hidden;height:100%}
+
+/* SIDEBAR */
+.sidebar{background:var(--s1);border-right:1px solid var(--b1);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-top{padding:20px;border-bottom:1px solid var(--b1)}
+.s-title{font-family:'Syne',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:2px;color:var(--t3);margin-bottom:14px}
+
+.upload-zone{border:2px dashed var(--b2);border-radius:8px;padding:28px 16px;text-align:center;cursor:pointer;transition:.2s;position:relative;margin-bottom:12px}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(232,197,71,.04)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upload-zone .uz-icon{font-size:24px;margin-bottom:8px}
+.upload-zone .uz-text{font-family:'Syne',sans-serif;font-weight:600;font-size:13px;margin-bottom:4px}
+.upload-zone .uz-sub{color:var(--t3);font-size:11px}
+
+textarea{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t1);font-family:'DM Mono',monospace;font-size:10px;padding:12px;resize:vertical;min-height:80px;outline:none;transition:.2s;line-height:1.6}
+textarea:focus{border-color:var(--accent)}
+textarea::placeholder{color:var(--t4)}
+
+.btn{font-family:'Syne',sans-serif;font-weight:700;font-size:12px;padding:9px 16px;border-radius:6px;border:none;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px;letter-spacing:.3px;width:100%;justify-content:center;margin-top:8px}
+.btn-accent{background:var(--accent);color:#0c0b09}
+.btn-accent:hover:not(:disabled){background:#f0d060;transform:translateY(-1px)}
+.btn-ghost{background:transparent;color:var(--t2);border:1px solid var(--b2)}
+.btn-ghost:hover{border-color:var(--t3);color:var(--t1)}
+.btn-teal{background:var(--teal);color:#0c0b09}
+.btn-teal:hover:not(:disabled){background:#65d8d0}
+.btn-green{background:var(--green);color:#0c0b09}
+.btn-green:hover{background:#80e893}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:12px 20px;border-bottom:1px solid var(--b1)}
+.stat{background:var(--s2);border-radius:6px;padding:10px 8px;text-align:center}
+.stat .n{font-family:'Syne',sans-serif;font-weight:700;font-size:18px}
+.stat .l{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-top:2px}
+
+/* Question list */
+.q-list{flex:1;overflow-y:auto;padding:8px}
+.q-item{border-radius:6px;padding:10px 12px;margin-bottom:4px;cursor:pointer;transition:.15s;border:1px solid transparent;position:relative}
+.q-item:hover{background:var(--s2);border-color:var(--b1)}
+.q-item.active{background:var(--s2);border-color:var(--b2)}
+.q-item.status-done{border-left:3px solid var(--green)}
+.q-item.status-conflict{border-left:3px solid var(--red)}
+.q-item.status-human{border-left:3px solid var(--orange)}
+.q-item.status-processing{border-left:3px solid var(--teal)}
+.q-code{font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);margin-bottom:4px}
+.q-text{font-size:12px;color:var(--t2);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.q-badges{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.b{font-family:'DM Mono',monospace;font-size:9px;padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.3px}
+.b-easy{background:rgba(105,219,124,.12);color:var(--green)}
+.b-medium{background:rgba(255,169,77,.12);color:var(--orange)}
+.b-hard{background:rgba(255,107,107,.12);color:var(--red)}
+.b-human{background:rgba(255,169,77,.15);color:var(--orange);border:1px solid rgba(255,169,77,.3)}
+.b-conflict{background:rgba(255,107,107,.15);color:var(--red)}
+.b-ok{background:rgba(105,219,124,.1);color:var(--green)}
+.b-processing{background:rgba(78,205,196,.1);color:var(--teal)}
+
+/* MAIN PANEL */
+.main-panel{display:flex;flex-direction:column;overflow:hidden}
+
+/* Agent console */
+.console{background:var(--s1);border-bottom:1px solid var(--b1);padding:14px 20px;height:160px;overflow-y:auto;font-family:'DM Mono',monospace;font-size:11px;line-height:1.9;flex-shrink:0}
+.console-header{font-family:'Syne',sans-serif;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--t3);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.log-line{color:var(--t3)}
+.log-line.info{color:var(--t2)}
+.log-line.success{color:var(--green)}
+.log-line.warn{color:var(--orange)}
+.log-line.error{color:var(--red)}
+
+/* Progress bar */
+.progress-wrap{padding:8px 20px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:12px;flex-shrink:0}
+.progress-track{flex:1;height:4px;background:var(--s3);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--teal));border-radius:2px;transition:width .4s ease;width:0%}
+.progress-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--t3);white-space:nowrap}
+
+/* Detail panel */
+.detail{flex:1;overflow-y:auto;padding:24px}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--t4);text-align:center;gap:12px}
+.empty-icon{font-size:48px}
+.empty-title{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:var(--t3)}
+.empty-sub{font-size:13px;max-width:300px;line-height:1.6}
+
+.detail-header{display:flex;align-items:flex-start;gap:16px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--b1)}
+.detail-code{font-family:'DM Mono',monospace;font-size:12px;color:var(--accent);background:rgba(232,197,71,.08);padding:4px 10px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.detail-question{font-family:'Syne',sans-serif;font-weight:600;font-size:16px;line-height:1.5;flex:1}
+.detail-meta{color:var(--t3);font-size:12px;margin-top:6px}
+
+.section{margin-bottom:24px}
+.sec-title{font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--t3);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--b1)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.card{background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:14px}
+.card.full{grid-column:1/-1}
+.card-label{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:6px}
+.card-value{font-size:13px;line-height:1.6;color:var(--t2)}
+.card-value.highlight{color:var(--t1);font-weight:500}
+
+.answer-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.ans{font-family:'DM Mono',monospace;font-size:12px;padding:5px 12px;border-radius:5px;border:1px solid var(--b2);font-weight:500}
+.ans-manual{color:var(--t2)}
+.ans-ai-col{color:var(--teal);border-color:rgba(78,205,196,.3);background:rgba(78,205,196,.06)}
+.ans-verified{color:var(--green);border-color:rgba(105,219,124,.3);background:rgba(105,219,124,.06)}
+.ans-conflict{color:var(--red);border-color:rgba(255,107,107,.3);background:rgba(255,107,107,.06)}
+.ans-arrow{color:var(--t4);font-size:10px}
+
+.verdict{padding:10px 14px;border-radius:6px;font-size:13px;line-height:1.5;margin-bottom:12px}
+.verdict-ok{background:rgba(105,219,124,.07);border:1px solid rgba(105,219,124,.2);color:var(--green)}
+.verdict-warn{background:rgba(255,169,77,.07);border:1px solid rgba(255,169,77,.2);color:var(--orange)}
+.verdict-err{background:rgba(255,107,107,.07);border:1px solid rgba(255,107,107,.2);color:var(--red)}
+
+.options-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.opt{padding:8px 10px;background:var(--s3);border-radius:5px;font-size:12px;display:flex;gap:8px;border:1px solid transparent}
+.opt.correct-opt{background:rgba(105,219,124,.06);border-color:rgba(105,219,124,.2)}
+.opt-key{font-family:'DM Mono',monospace;color:var(--t3);flex-shrink:0}
+.correct-opt .opt-key{color:var(--green)}
+
+.memory-box{background:linear-gradient(135deg,rgba(232,197,71,.07),rgba(78,205,196,.05));border:1px solid rgba(232,197,71,.2);border-radius:8px;padding:14px}
+.memory-type{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:6px}
+.memory-text{font-size:14px;font-style:italic;color:var(--t1);line-height:1.6}
+
+.queries-box textarea{min-height:90px;font-size:12px}
+
+.agent-breakdown{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.agent-row{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--s3);border-radius:5px;font-size:12px}
+.agent-icon{width:20px;text-align:center}
+.agent-name{font-family:'DM Mono',monospace;font-size:10px;color:var(--t3);flex:1}
+.agent-status{font-size:11px;color:var(--t2)}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--s1)}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
+
+/* Spinner */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(78,205,196,.3);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite}
+
+/* Filter row */
+.filter-row{padding:8px 20px;border-bottom:1px solid var(--b1);display:flex;gap:6px;flex-shrink:0}
+.filter-btn{font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border-radius:12px;border:1px solid var(--b1);background:transparent;color:var(--t3);cursor:pointer;text-transform:uppercase;letter-spacing:.5px;transition:.15s}
+.filter-btn:hover,.filter-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(232,197,71,.06)}
+
+.toolbar{padding:12px 20px;border-bottom:1px solid var(--b1);display:flex;gap:8px;align-items:center;flex-shrink:0}
+.toolbar .btn{width:auto;margin:0}
+.spacer{flex:1}
+
+@media(max-width:900px){
+  .body{grid-template-columns:1fr}
+  .sidebar{height:50vh}
+  .grid2,.grid3{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">EA MCQ <em>Agent Review System</em></div>
+    <div class="status-pills">
+      <div class="pill" id="pillGroq">Groq ···</div>
+      <div class="pill" id="pillOR">OpenRouter ···</div>
+    </div>
+  </header>
+
+  <div class="body">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-top">
+        <div class="s-title">Load Questions</div>
+        <div class="upload-zone" id="uploadZone">
+          <input type="file" id="fileInput" accept=".csv,.tsv,.txt">
+          <div class="uz-icon">📂</div>
+          <div class="uz-text">Drop CSV / TSV file</div>
+          <div class="uz-sub">Or paste data below</div>
+        </div>
+        <textarea id="pasteArea" placeholder="Paste tab-separated data here..."></textarea>
+        <button class="btn btn-accent" onclick="loadData()">⚡ Load Questions</button>
+        <button class="btn btn-ghost" onclick="loadSample()">Load Sample</button>
+      </div>
+
+      <div class="stats-row" id="statsRow" style="display:none">
+        <div class="stat"><div class="n" id="sTotal">0</div><div class="l">Total</div></div>
+        <div class="stat"><div class="n" id="sDone" style="color:var(--green)">0</div><div class="l">Done</div></div>
+        <div class="stat"><div class="n" id="sConflict" style="color:var(--red)">0</div><div class="l">Conflict</div></div>
+        <div class="stat"><div class="n" id="sHuman" style="color:var(--orange)">0</div><div class="l">Human</div></div>
+      </div>
+
+      <div class="filter-row" id="filterRow" style="display:none">
+        <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+        <button class="filter-btn" onclick="setFilter('conflict',this)">⚡ Conflict</button>
+        <button class="filter-btn" onclick="setFilter('human',this)">⚠ Human</button>
+        <button class="filter-btn" onclick="setFilter('done',this)">✓ Done</button>
+      </div>
+
+      <div class="q-list" id="qList"></div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main-panel">
+      <!-- Toolbar -->
+      <div class="toolbar" id="toolbar" style="display:none">
+        <button class="btn btn-teal" id="reviewAllBtn" onclick="reviewAll()">
+          <span class="spin" id="globalSpin" style="display:none"></span>
+          🤖 Review All
+        </button>
+        <button class="btn btn-green" onclick="exportCSV()">⬇ Export CSV</button>
+        <div class="spacer"></div>
+        <span id="toolbarStatus" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--t3)"></span>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-wrap" id="progressWrap" style="display:none">
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-label" id="progressLabel">0 / 0</div>
+      </div>
+
+      <!-- Console -->
+      <div class="console" id="console">
+        <div class="console-header">
+          <span>Agent Console</span>
+          <button onclick="clearConsole()" style="background:none;border:none;color:var(--t4);cursor:pointer;font-size:10px">clear</button>
+        </div>
+        <div id="consoleLogs"><div class="log-line">System ready. Load questions to begin.</div></div>
+      </div>
+
+      <!-- Detail -->
+      <div class="detail" id="detail">
+        <div class="empty-state">
+          <div class="empty-icon">🤖</div>
+          <div class="empty-title">Multi-Agent MCQ Review</div>
+          <div class="empty-sub">Upload your question dump. Agents will self-organize to review each question — verifying answers, rating difficulty, checking explanations, and generating memory tricks.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let questions = [];
+let results = {};
+let activeIdx = null;
+let currentFilter = 'all';
+let reviewing = false;
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+async function checkHealth() {
+  try {
+    const r = await fetch('/api/health');
+    const h = await r.json();
+    const groq = document.getElementById('pillGroq');
+    const or = document.getElementById('pillOR');
+    groq.textContent = 'Groq';
+    groq.className = 'pill ' + (h.groq ? 'ok' : 'err');
+    or.textContent = 'OpenRouter';
+    or.className = 'pill ' + (h.openrouter ? 'ok' : 'err');
+    if (!h.groq && !h.openrouter) log('⚠ No API keys found. Copy .env.example to .env and add your keys.', 'warn');
+    else log(`✓ APIs ready — Groq: ${h.groq?'✓':'✗'}, OpenRouter: ${h.openrouter?'✓':'✗'}`, 'success');
+  } catch { log('⚠ Cannot reach server. Is it running?', 'warn'); }
+}
+
+// ── Logging ───────────────────────────────────────────────────────────────────
+function log(msg, type = 'info') {
+  const el = document.getElementById('consoleLogs');
+  const line = document.createElement('div');
+  line.className = `log-line ${type}`;
+  const ts = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  line.textContent = `[${ts}] ${msg}`;
+  el.appendChild(line);
+  el.parentElement.scrollTop = el.parentElement.scrollHeight;
+}
+
+function clearConsole() {
+  document.getElementById('consoleLogs').innerHTML = '';
+}
+
+// ── File handling ─────────────────────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => { document.getElementById('pasteArea').value = ev.target.result; loadData(); };
+  reader.readAsText(file);
+});
+
+const uz = document.getElementById('uploadZone');
+uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('drag'); });
+uz.addEventListener('dragleave', () => uz.classList.remove('drag'));
+uz.addEventListener('drop', e => {
+  e.preventDefault(); uz.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => { document.getElementById('pasteArea').value = ev.target.result; loadData(); };
+  reader.readAsText(file);
+});
+
+async function loadData() {
+  const data = document.getElementById('pasteArea').value.trim();
+  if (!data) { alert('Paste your data first'); return; }
+  try {
+    const r = await fetch('/api/parse', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ data }) });
+    const j = await r.json();
+    if (j.error) { alert('Parse error: ' + j.error); return; }
+    questions = j.questions;
+    results = {};
+    log(`✓ Loaded ${questions.length} questions`, 'success');
+    renderAll();
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+function loadSample() {
+  document.getElementById('pasteArea').value = `Code\tChapter\tFinal Sub Unit\tQuestion\tOption A\tOption B\tOption C\tOption D\tRight Option\tGeneral Feedback\tAI\tAIMatch\tFinal Answer\tFinal explanation\tDifficulty Level\tCategory\tQueries
+E2-249\tCh_2_Business_Taxation\tUnit 2.8- Reconciliation of Book versus Tax Income (Loss)\tWhich of the following correctly identifies Schedule M-1?\tReconciliation of Income (Loss)\tDurable Power of Attorney\tAnalysis of Unappropriated Retained Earnings per Books\tNone of the above\tA\tA corporation uses Schedule M-1 of Form 1120 to reconcile book income with the income it reports on its tax return.\tA\tTRUE\tA\tThe correct answer is (a). Schedule M-1 is used by corporations and partnerships to reconcile financial book income with the income reported on the tax return.\tEasy\tStatic Question\t
+E2-250\tCh_2_Business_Taxation\tUnit 2.8- Reconciliation of Book versus Tax Income (Loss)\tCarnival Corporation has total assets of $65 million. Which form should the corporation use to reconcile its income per books with income per its tax return?\tSchedule M-1\tSchedule M-2\tSchedule M-3\tSchedule L\tC\tA corporation with total assets of $10 million or more must complete Schedule M-3.\tC\tTRUE\tC\tThe correct answer is (c). A corporation with $10M+ assets uses Schedule M-3.\tEasy\tStatic Question\t
+E2-251\tCh_2_Business_Taxation\tUnit 2.8- Reconciliation of Book versus Tax Income (Loss)\tA C corporation has a net operating loss (NOL). How is this treated?\tCarried forward 20 years only\t80% of taxable income carryforward indefinitely\tCarried back 2 years then forward\tDeducted in full in current year\tB\tNOLs from 2018 onward can be carried forward indefinitely but limited to 80% of taxable income.\tA\tFALSE\tB\tPost-TCJA NOL rules apply the 80% limitation.\tMedium\tYear-Dependent\t`;
+  loadData();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderAll() {
+  document.getElementById('statsRow').style.display = 'grid';
+  document.getElementById('filterRow').style.display = 'flex';
+  document.getElementById('toolbar').style.display = 'flex';
+  updateStats();
+  renderList();
+  if (questions.length) selectQuestion(0);
+}
+
+function renderList() {
+  const list = document.getElementById('qList');
+  list.innerHTML = '';
+  questions.forEach((q, i) => {
+    const r = results[i];
+    let statusClass = '';
+    let badges = '';
+    if (r) {
+      if (r._processing) {
+        statusClass = 'status-processing';
+        badges = `<span class="b b-processing"><span class="spin" style="width:8px;height:8px;border-width:1.5px"></span> Processing</span>`;
+      } else if (r.needsHuman) {
+        statusClass = 'status-human';
+        badges = `<span class="b b-human">⚠ Human</span><span class="b b-${(r.difficulty||'easy').toLowerCase()}">${r.difficulty||'?'}</span>`;
+      } else if (r.hasConflict) {
+        statusClass = 'status-conflict';
+        badges = `<span class="b b-conflict">⚡ Conflict</span><span class="b b-${(r.difficulty||'easy').toLowerCase()}">${r.difficulty||'?'}</span>`;
+      } else {
+        statusClass = 'status-done';
+        badges = `<span class="b b-ok">✓</span><span class="b b-${(r.difficulty||'easy').toLowerCase()}">${r.difficulty||'?'}</span>`;
+      }
+    }
+
+    if (currentFilter !== 'all') {
+      const statusType = r?._processing ? 'processing' : r?.needsHuman ? 'human' : r?.hasConflict ? 'conflict' : r ? 'done' : 'pending';
+      if (currentFilter !== statusType) return;
+    }
+
+    const item = document.createElement('div');
+    item.className = `q-item ${statusClass} ${activeIdx === i ? 'active' : ''}`;
+    item.onclick = () => selectQuestion(i);
+    item.innerHTML = `
+      <div class="q-code">${q.code || `Q${i+1}`}</div>
+      <div class="q-text">${q.question}</div>
+      <div class="q-badges">${badges}</div>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function selectQuestion(i) {
+  activeIdx = i;
+  renderList();
+  renderDetail(i);
+}
+
+function renderDetail(i) {
+  const q = questions[i];
+  const r = results[i];
+  const detail = document.getElementById('detail');
+
+  if (!q) { detail.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">No question selected</div></div>'; return; }
+
+  const finalAnswer = r?.finalAnswer || q.finalAnswer || q.rightOption;
+  const hasConflict = q.rightOption !== q.aiAnswer || (r && r.hasConflict);
+
+  let answerVerdictHtml = '';
+  if (r && !r._processing) {
+    const vc = r.needsHuman ? 'verdict-warn' : r.hasConflict ? 'verdict-err' : 'verdict-ok';
+    const vt = r.needsHuman
+      ? `⚠ Needs human review — ${r.queries?.split('|')[0] || 'Uncertain answer'}`
+      : r.hasConflict
+        ? `⚡ Conflict detected: ${r.conflictType || ''} — AI recommends ${r.finalAnswer}`
+        : `✓ Answer verified as ${r.finalAnswer} (${r.answerConfidence || ''} confidence)`;
+    answerVerdictHtml = `<div class="verdict ${vc}">${vt}</div>`;
+  }
+
+  detail.innerHTML = `
+    <div class="detail-header">
+      <div class="detail-code">${q.code || `Q${i+1}`}</div>
+      <div>
+        <div class="detail-question">${q.question}</div>
+        <div class="detail-meta">${q.chapter || ''} · ${q.unit || ''}</div>
+      </div>
+      ${!r ? `<button class="btn btn-accent" style="width:auto;margin:0;white-space:nowrap" onclick="reviewOne(${i})">Review</button>` : ''}
+    </div>
+
+    ${r?._processing ? `<div class="verdict verdict-warn"><span class="spin"></span> Agents are reviewing this question…</div>` : ''}
+    ${answerVerdictHtml}
+
+    <!-- Options -->
+    <div class="section">
+      <div class="sec-title">Options</div>
+      <div class="options-grid">
+        ${['A','B','C','D'].map(opt => {
+          const val = q[`option${opt}`];
+          if (!val) return '';
+          const correct = (finalAnswer||'').toUpperCase() === opt;
+          return `<div class="opt ${correct?'correct-opt':''}"><span class="opt-key">${opt})</span> ${val}</div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- Answer analysis -->
+    <div class="section">
+      <div class="sec-title">Answer Analysis</div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-label">Answer Comparison</div>
+          <div class="answer-row">
+            <span class="ans ans-manual">Manual: ${q.rightOption||'?'}</span>
+            <span class="ans-arrow">→</span>
+            <span class="ans ans-ai-col">AI Col: ${q.aiAnswer||'?'}</span>
+            ${r && !r._processing ? `<span class="ans-arrow">→</span><span class="ans ${r.hasConflict?'ans-conflict':'ans-verified'}">AI Verdict: ${r.correctAnswer||r.finalAnswer||'?'}</span>` : ''}
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-label">Difficulty</div>
+          <div class="card-value highlight">${r?.difficulty || q.difficulty || '—'} ${r?.difficultyChanged ? '⚠ changed' : ''}</div>
+          ${r?.difficultyReasoning ? `<div class="card-value" style="margin-top:4px;font-size:12px">${r.difficultyReasoning}</div>` : ''}
+        </div>
+        <div class="card">
+          <div class="card-label">Question Type</div>
+          <div class="card-value highlight">${r?.questionType || q.category || '—'}</div>
+          ${r?.yearDependentReason ? `<div class="card-value" style="margin-top:4px;font-size:12px">${r.yearDependentReason}</div>` : ''}
+        </div>
+        <div class="card">
+          <div class="card-label">Unit Placement</div>
+          <div class="card-value highlight">${r ? (r.unitMatch ? '✓ Correct unit' : `✗ Move to: ${r.suggestedUnit}`) : q.unit || '—'}</div>
+        </div>
+      </div>
+    </div>
+
+    ${r && !r._processing ? `
+    <!-- Explanation -->
+    <div class="section">
+      <div class="sec-title">Explanation Review</div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-label">Quality Rating</div>
+          <div class="card-value highlight">${r.explanationQuality || '—'} ${r.explanationScore ? `(${r.explanationScore}/10)` : ''}</div>
+          ${r.explanationImprovements ? `<div class="card-value" style="margin-top:6px;font-size:12px">Missing: ${r.explanationImprovements}</div>` : ''}
+        </div>
+        <div class="card">
+          <div class="card-label">Calculation</div>
+          <div class="card-value highlight">${r.needsCalculation ? '⚠ Calculation needed' : '✓ No calculation needed'}</div>
+          ${r.thresholds ? `<div class="card-value" style="margin-top:4px;font-size:12px">Thresholds: ${r.thresholds}</div>` : ''}
+        </div>
+        ${r.explanationSuggestion ? `<div class="card full"><div class="card-label">Suggestion</div><div class="card-value">${r.explanationSuggestion}</div></div>` : ''}
+        ${r.calculationSteps ? `<div class="card full"><div class="card-label">Calculation Steps to Add</div><div class="card-value">${r.calculationSteps}</div></div>` : ''}
+      </div>
+    </div>
+
+    <!-- Current explanation -->
+    <div class="section">
+      <div class="sec-title">Current Explanation</div>
+      <div class="card">
+        <div class="card-value">${q.finalExplanation || q.feedback || '<em style="color:var(--t4)">No explanation</em>'}</div>
+      </div>
+    </div>
+
+    <!-- Memory trick -->
+    ${r.memoryTrick ? `
+    <div class="section">
+      <div class="sec-title">Memory Trick</div>
+      <div class="memory-box">
+        <div class="memory-type">💡 ${r.memoryType || 'Memory Trick'}</div>
+        <div class="memory-text">${r.memoryTrick}</div>
+        ${r.keyConceptSummary ? `<div style="margin-top:8px;font-size:11px;color:var(--t3)">${r.keyConceptSummary}</div>` : ''}
+      </div>
+    </div>` : ''}
+
+    <!-- Agent breakdown -->
+    <div class="section">
+      <div class="sec-title">Agent Activity · ${r.elapsed||''}s</div>
+      <div class="agent-breakdown">
+        ${(r.agentLog||[]).map(l => {
+          const icon = l.startsWith('🎯')?'🎯':l.startsWith('✅')?'✅':l.startsWith('⚡')?'⚡':l.startsWith('📊')?'📊':l.startsWith('📂')?'📂':l.startsWith('📝')?'📝':l.startsWith('💡')?'💡':l.startsWith('🔢')?'🔢':'→';
+          return `<div class="agent-row"><span class="agent-icon">${icon}</span><span class="agent-status">${l}</span></div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- Queries -->
+    <div class="section">
+      <div class="sec-title">Queries Column</div>
+      <div class="queries-box">
+        <textarea id="queries-${i}" placeholder="Changes and flags for this question…">${r.queries || q.queries || ''}</textarea>
+      </div>
+    </div>
+
+    ` : ''}
+
+    ${!r ? `
+    <!-- No review yet -->
+    <div class="section">
+      <div class="sec-title">Current Explanation</div>
+      <div class="card"><div class="card-value">${q.finalExplanation || q.feedback || '<em style="color:var(--t4)">No explanation</em>'}</div></div>
+    </div>
+    <div class="section">
+      <div class="sec-title">Queries</div>
+      <div class="queries-box"><textarea id="queries-${i}" placeholder="Notes…">${q.queries||''}</textarea></div>
+    </div>
+    ` : ''}
+  `;
+}
+
+// ── Review ────────────────────────────────────────────────────────────────────
+async function reviewOne(i) {
+  if (results[i] && !results[i]._processing) return;
+  results[i] = { _processing: true };
+  renderList();
+  if (activeIdx === i) renderDetail(i);
+  log(`→ Starting review for ${questions[i].code}...`);
+
+  try {
+    const response = await fetch('/api/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: questions[i] })
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const ev = JSON.parse(line.slice(6));
+          if (ev.type === 'log') log(ev.message, ev.message.includes('⚠') || ev.message.includes('💥') ? 'warn' : 'info');
+          if (ev.type === 'result') {
+            results[i] = ev.result;
+            renderList();
+            if (activeIdx === i) renderDetail(i);
+            updateStats();
+          }
+        } catch {}
+      }
+    }
+  } catch (e) {
+    results[i] = { status: 'error', needsHuman: true, queries: '⚠ Error: ' + e.message, _processing: false };
+    log(`💥 Review failed for ${questions[i].code}: ${e.message}`, 'error');
+    renderList();
+    if (activeIdx === i) renderDetail(i);
+  }
+}
+
+async function reviewAll() {
+  if (reviewing) return;
+  reviewing = true;
+  document.getElementById('reviewAllBtn').disabled = true;
+  document.getElementById('globalSpin').style.display = 'inline-block';
+  document.getElementById('progressWrap').style.display = 'flex';
+
+  const todo = questions.filter((_, i) => !results[i] || results[i]._processing);
+  log(`🤖 Starting bulk review — ${todo.length} questions to process`, 'success');
+
+  const total = questions.length;
+  let done = Object.keys(results).filter(i => !results[i]._processing).length;
+
+  try {
+    const response = await fetch('/api/review-all', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questions })
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done: rdone, value } = await reader.read();
+      if (rdone) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const ev = JSON.parse(line.slice(6));
+          if (ev.type === 'progress') {
+            results[ev.index] = { _processing: true };
+            document.getElementById('toolbarStatus').textContent = `Reviewing ${ev.code}…`;
+            if (activeIdx === ev.index) renderDetail(ev.index);
+            renderList();
+          }
+          if (ev.type === 'log') log(ev.message, ev.message.includes('⚠') ? 'warn' : 'info');
+          if (ev.type === 'question-done') {
+            results[ev.index] = ev.result;
+            done++;
+            const pct = (done / total) * 100;
+            document.getElementById('progressFill').style.width = pct + '%';
+            document.getElementById('progressLabel').textContent = `${done} / ${total}`;
+            updateStats();
+            renderList();
+            if (activeIdx === ev.index) renderDetail(ev.index);
+          }
+          if (ev.type === 'complete') {
+            log(`✓ All ${total} questions reviewed!`, 'success');
+          }
+        } catch {}
+      }
+    }
+  } catch (e) {
+    log('💥 Bulk review error: ' + e.message, 'error');
+  }
+
+  reviewing = false;
+  document.getElementById('reviewAllBtn').disabled = false;
+  document.getElementById('globalSpin').style.display = 'none';
+  document.getElementById('toolbarStatus').textContent = '';
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function updateStats() {
+  const vals = Object.values(results);
+  document.getElementById('sTotal').textContent = questions.length;
+  document.getElementById('sDone').textContent = vals.filter(r => !r._processing).length;
+  document.getElementById('sConflict').textContent = vals.filter(r => r.hasConflict).length;
+  document.getElementById('sHuman').textContent = vals.filter(r => r.needsHuman).length;
+}
+
+// ── Filter ────────────────────────────────────────────────────────────────────
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderList();
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+async function exportCSV() {
+  // Save any edited queries fields first
+  questions.forEach((_, i) => {
+    const el = document.getElementById(`queries-${i}`);
+    if (el && results[i]) results[i].queries = el.value;
+  });
+
+  const res = await fetch('/api/export', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ questions, results: Object.entries(results).map(([i, r]) => ({ index: parseInt(i), ...r })) })
+  });
+
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ea_mcq_reviewed.csv';
+  a.click();
+  log('✓ CSV exported successfully', 'success');
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+checkHealth();
+</script>
+</body>
+</html>
